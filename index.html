@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>YQ 铁匠铺 · 打工人语音面板 v2.5.1</title>
+<title>YQ 铁匠铺 · 打工人语音面板 v2.6</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -277,9 +277,63 @@
     color: #999;
     border-color: #666;
   }
+
+  /* ============ v2.6 加载蒙层 ============ */
+  .loader {
+    position: fixed; inset: 0;
+    background: #1a1410;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #ffe9a8;
+    font-family: inherit;
+    transition: opacity 0.5s ease;
+  }
+  .loader.hidden { opacity: 0; pointer-events: none; }
+  .loader-title {
+    font-size: 14px;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    text-shadow: 1px 1px 0 #000;
+  }
+  .loader-bar {
+    width: 240px;
+    height: 14px;
+    border: 2px solid #ffd766;
+    background: #0a0805;
+    padding: 1px;
+    image-rendering: pixelated;
+  }
+  .loader-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ffb84a 0%, #ffd766 50%, #ffb84a 100%);
+    transition: width 0.15s linear;
+  }
+  .loader-pct {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #c7a060;
+  }
+  .loader-hint {
+    margin-top: 14px;
+    font-size: 10px;
+    color: #7a6040;
+    letter-spacing: 1px;
+  }
 </style>
 </head>
 <body>
+
+<!-- v2.6 加载蒙层 -->
+<div class="loader" id="loader">
+  <div class="loader-title">⚒ 铁匠铺加载中</div>
+  <div class="loader-bar"><div class="loader-fill" id="loader-fill"></div></div>
+  <div class="loader-pct" id="loader-pct">0%</div>
+  <div class="loader-hint">炉火正在升温…</div>
+</div>
 
 <div class="hint">
   <span class="key">👆 点击 NPC</span> 听他说话 · <span class="key">他们会自己瞎逛</span>
@@ -320,13 +374,66 @@
 </div>
 
 <div class="footer">
-  YQ 的铁匠铺 · 打工人语音面板 v2.5.1 · 点击数:<span id="counter">0</span>
+  YQ 的铁匠铺 · 打工人语音面板 v2.6 · 点击数:<span id="counter">0</span>
 </div>
 
 <button class="mute-btn" id="mute-btn" title="切换语音">🔊 有声</button>
 <button class="global-btn" id="global-btn">🔔 集结!</button>
 
 <script>
+// =========================================================
+// 0. v2.6 资源预加载 + loading 蒙层（关键资源优先 + 渐进可玩）
+// =========================================================
+(function () {
+  // 关键资源：背景 + 3 个 idle 帧，加载完就放行(4 张,1MB 左右)
+  const CRITICAL = [
+    'assets/img/bg.jpeg',
+    'assets/img/peasant_idle1.png',
+    'assets/img/peon_idle1.png',
+    'assets/img/yq_idle1.png',
+  ];
+  // 后台继续加载：walk/talk 帧,不阻塞首屏(9 张)
+  const SECONDARY = [
+    'assets/img/peasant_walk1.png', 'assets/img/peasant_walk2.png', 'assets/img/peasant_talk1.png',
+    'assets/img/peon_walk1.png', 'assets/img/peon_walk2.png', 'assets/img/peon_talk1.png',
+    'assets/img/yq_walk1.png', 'assets/img/yq_walk2.png', 'assets/img/yq_talk1.png',
+  ];
+
+  const loader = document.getElementById('loader');
+  const fill = document.getElementById('loader-fill');
+  const pct = document.getElementById('loader-pct');
+  const hint = loader.querySelector('.loader-hint');
+  let done = 0;
+  let released = false;
+
+  function release() {
+    if (released) return;
+    released = true;
+    loader.classList.add('hidden');
+    setTimeout(() => loader.remove(), 600);
+  }
+  function tick() {
+    done++;
+    const p = Math.round(done / CRITICAL.length * 100);
+    fill.style.width = p + '%';
+    pct.textContent = p + '%';
+    if (done >= CRITICAL.length) {
+      hint.textContent = '炉火已起,开工!';
+      setTimeout(release, 150);
+    }
+  }
+  CRITICAL.forEach(src => {
+    const img = new Image();
+    img.onload = tick;
+    img.onerror = tick;
+    img.src = src;
+  });
+  // 后台加载次要资源,不影响首屏放行;NPC 行为代码已用 idle 兜底
+  SECONDARY.forEach(src => { const img = new Image(); img.src = src; });
+  // 兜底: 3 秒后无论如何都放行(关键资源 4 张,正常 < 1s)
+  setTimeout(release, 3000);
+})();
+
 // =========================================================
 // 1. 资源池
 // =========================================================
@@ -449,7 +556,7 @@ function playVoice(role, emotion) {
   }
 
   const file = randomFrom(pool);
-  const audio = new Audio(`assets/audio/${role}/${file}.wav`);
+  const audio = new Audio(`assets/audio/${role}/${file}.ogg`);
   audio.volume = 0.85;
   audio.play().catch(err => console.warn('音频播放失败:', err));
   currentAudio = audio;

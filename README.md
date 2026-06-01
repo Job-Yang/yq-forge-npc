@@ -1,17 +1,16 @@
-# YQ 铁匠铺 · 打工人语音面板 v2.5
+# YQ 铁匠铺 · 打工人语音面板 v2.6
 
 一个像素风可交互 NPC 语音面板：点击人族农民 / 兽族苦工，他们会冒像素台词框 + 播放对应 War3 语音；工程师 YQ 不说话，只会定时冒泡。三个 NPC 都会在地面上自己瞎逛。
 
-**v2.5 天气系统重写（戏剧化像素风）**：
-- 用 `<canvas>` 重写整个天气层（之前 CSS 重复渐变效果太差）
-- **暴雨**：3 层视差雨滴 + 风向随时间摇摆 + 地面溅落小水圈 + 随机闪电（全屏闪光 + 锯齿闪电几何 + 蓝色余晖）
-- **夜晚**：80 颗星星缓动闪烁 + 像素月亮（带月相阴影）
-- **晴**：保留 v2.4 的暖色光晕
-- 调色用 `mix-blend-mode: multiply`，保留背景层次而不一片灰
-- 砍掉自动 45s 轮转（干扰太频繁），改为只**手动**点右上角标签切换 sunny → rain → night → sunny
+**v2.6 加载性能优化**：
+- **PNG 全部走 pngquant + oxipng 二压**：12 张精灵图 6.6 MB → 2.0 MB（省 70%）
+- **WAV → OGG/Opus 单声道 24 kbps**：36 条语音 2.8 MB → 175 KB（省 94%）
+- 整包从 9.4 MB 砍到 2.6 MB（**省 72%**），4G 下首屏基本秒开
+- 加 loading 蒙层：像素进度条 + 百分比，13 张关键图片加载完才放行，5 秒兜底
+- JS 内 `new Audio()` 路径同步改为 `.ogg`
 
-参考：[CodePen Pixel Rain](https://codepen.io/JohnvandeWater/pen/XbgryW) / [Canvas Lightning by Sooraj](https://dev.to/soorajsnblaze333/make-it-flash-lightning-with-canvas-43nh)
-
+**v2.5.1**：气泡自适应宽度修复（短中文不再竖排单字）
+**v2.5 天气系统重写（戏剧化像素风）**：用 `<canvas>` 重写整个天气层，3 层视差雨滴 + 风向摇摆 + 地面溅落 + 随机闪电；夜晚 80 颗星星 + 像素月亮；调色用 `mix-blend-mode: multiply` 保留背景层次。手动点右上角标签切换。
 **v2.4**：YQ 台词池整体替换为「工程师 × AI 协作日常吐槽」21 条。
 **v2.3**：右下角 🔊/🔇 静音切换，状态写 localStorage 自动记住。
 
