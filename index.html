@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>YQ 铁匠铺 · 打工人语音面板</title>
+<title>YQ 铁匠铺 · 打工人语音面板 v2</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -18,11 +18,10 @@
     position: relative;
     user-select: none;
   }
-  /* 半透明叠层让 NPC 更突出 */
   body::before {
     content: "";
     position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(20,15,10,0.15) 0%, rgba(20,15,10,0.35) 100%);
+    background: linear-gradient(180deg, rgba(20,15,10,0.10) 0%, rgba(20,15,10,0.30) 100%);
     pointer-events: none;
     z-index: 1;
   }
@@ -42,20 +41,28 @@
   }
   .hint .key { color: #ffd766; font-weight: bold; }
 
-  /* NPC 容器 */
+  /* 舞台 —— 整个视窗作为活动区域，NPC 用 absolute 自由行走 */
   .stage {
     position: absolute; inset: 0;
     z-index: 5;
-    display: flex;
-    justify-content: space-around;
-    align-items: flex-end;
-    padding-bottom: 4%;
   }
+
+  /* 地面带 —— 底部 35% 是 NPC 行走范围，仅用于视觉调试可去掉 */
+  .ground {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 35%;
+    pointer-events: none;
+  }
+
+  /* NPC */
   .npc {
-    position: relative;
+    position: absolute;
+    bottom: 0;
     cursor: pointer;
     transition: transform 0.18s ease-out;
-    filter: drop-shadow(0 6px 4px rgba(0,0,0,0.4));
+    filter: drop-shadow(0 6px 4px rgba(0,0,0,0.45));
+    will-change: left, transform;
   }
   .npc:hover {
     transform: translateY(-6px) scale(1.04);
@@ -69,10 +76,15 @@
     50% { transform: translateY(-8px) rotate(0) scale(1.06); }
     75% { transform: translateY(-4px) rotate(2deg) scale(1.05); }
   }
-  .npc img {
-    height: 55vh;
-    max-height: 480px;
+  /* 角色 img 单独翻转,不影响气泡/名牌 */
+  .sprite {
+    height: 38vh;
+    max-height: 320px;
     display: block;
+    transition: transform 0.1s linear;
+  }
+  .npc[data-facing="left"] .sprite {
+    transform: scaleX(-1);
   }
 
   /* 名牌 */
@@ -89,44 +101,58 @@
     border: 1px solid rgba(255,255,255,0.2);
   }
 
-  /* 对话气泡 */
+  /* 对话气泡 —— 像素风游戏台词框 */
   .bubble {
     position: absolute;
-    top: -60px;
+    top: -64px;
     left: 50%; transform: translateX(-50%) scale(0);
-    background: #fff;
-    color: #111;
-    padding: 10px 14px;
-    font-size: 13px;
+    background: linear-gradient(180deg, #f8e7b8 0%, #e8c98a 100%);
+    color: #2a1a05;
+    padding: 10px 18px;
+    font-size: 18px;
     font-weight: bold;
-    border: 3px solid #2a1a05;
-    border-radius: 6px;
-    white-space: nowrap;
-    box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
-    transition: transform 0.2s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    font-family: "Courier New", "PingFang SC", monospace;
+    letter-spacing: 1px;
+    /* 多层 box-shadow 模拟像素台阶边框 */
+    box-shadow:
+      0 0 0 3px #2a1a05,
+      0 0 0 6px #d4a85a,
+      0 0 0 9px #2a1a05,
+      6px 6px 0 9px rgba(0,0,0,0.45);
+    border-radius: 2px;
+    transition: transform 0.22s cubic-bezier(0.68, -0.55, 0.27, 1.55);
     pointer-events: none;
-    max-width: 240px;
+    max-width: 280px;
     white-space: normal;
     text-align: center;
-    line-height: 1.4;
+    line-height: 1.35;
+    z-index: 9;
+    text-shadow: 1px 1px 0 rgba(255,255,255,0.4);
   }
   .bubble.show {
     transform: translateX(-50%) scale(1);
   }
+  /* 像素风台阶式小尖角 —— 用伪元素堆三层方块模拟 */
   .bubble::after {
     content: "";
     position: absolute;
-    bottom: -10px; left: 50%; transform: translateX(-50%);
-    border: 8px solid transparent;
-    border-top-color: #2a1a05;
+    bottom: -9px; left: 50%; transform: translateX(-50%);
+    width: 12px; height: 6px;
+    background: #e8c98a;
+    box-shadow:
+      -3px 0 0 #e8c98a,
+      3px 0 0 #e8c98a,
+      0 0 0 3px #2a1a05,
+      -3px 3px 0 #2a1a05,
+      3px 3px 0 #2a1a05;
   }
   .bubble::before {
     content: "";
     position: absolute;
-    bottom: -7px; left: 50%; transform: translateX(-50%);
-    border: 7px solid transparent;
-    border-top-color: #fff;
-    z-index: 1;
+    bottom: -15px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 6px;
+    background: #e8c98a;
+    box-shadow: 0 0 0 3px #2a1a05;
   }
 
   /* footer 计数器 */
@@ -134,7 +160,7 @@
     position: absolute;
     bottom: 8px; left: 12px;
     z-index: 10;
-    color: rgba(255,255,255,0.5);
+    color: rgba(255,255,255,0.55);
     font-size: 10px;
     letter-spacing: 1px;
   }
@@ -163,93 +189,312 @@
 <body>
 
 <div class="hint">
-  <span class="key">👆 点击 NPC</span> 听他说话 · <span class="key">悬停</span> 看反应
+  <span class="key">👆 点击 NPC</span> 听他说话 · <span class="key">他们会自己瞎逛</span>
 </div>
 
-<div class="stage">
+<div class="stage" id="stage">
   <!-- 人族农民 -->
-  <div class="npc" id="peasant" data-role="peasant">
+  <div class="npc" id="peasant" data-role="peasant" data-facing="right">
     <div class="bubble" id="bubble-peasant"></div>
-    <img src="assets/img/peasant.jpeg" alt="Peasant" />
+    <img class="sprite" id="img-peasant" src="assets/img/peasant_idle1.png" alt="Peasant" />
     <div class="nameplate">⚔ 人族农民</div>
   </div>
 
-  <!-- 兽人苦工 -->
-  <div class="npc" id="peon" data-role="peon">
+  <!-- 兽族苦工 -->
+  <div class="npc" id="peon" data-role="peon" data-facing="left">
     <div class="bubble" id="bubble-peon"></div>
-    <img src="assets/img/peon.jpeg" alt="Peon" />
+    <img class="sprite" id="img-peon" src="assets/img/peon_idle1.png" alt="Peon" />
     <div class="nameplate">🪓 兽族苦工</div>
+  </div>
+
+  <!-- 工程师 YQ -->
+  <div class="npc" id="yq" data-role="yq" data-facing="right">
+    <div class="bubble" id="bubble-yq"></div>
+    <img class="sprite" id="img-yq" src="assets/img/yq_idle1.png" alt="YQ" />
+    <div class="nameplate">💻 工程师 YQ</div>
   </div>
 </div>
 
 <div class="footer">
-  YQ 的铁匠铺 · 打工人语音面板 v1 · 总点击数:<span id="counter">0</span>
+  YQ 的铁匠铺 · 打工人语音面板 v2 · 点击数:<span id="counter">0</span>
 </div>
 
 <button class="global-btn" id="global-btn">🔔 集结!</button>
 
 <script>
 // =========================================================
-// 语音池 —— 每个角色按"情绪类型"分组,点击/悬停随机播放
+// 1. 资源池
 // =========================================================
+const SPRITES = {
+  peasant: {
+    idle:  ['assets/img/peasant_idle1.png'],
+    walk:  ['assets/img/peasant_walk1.png', 'assets/img/peasant_walk2.png'],
+    talk:  ['assets/img/peasant_talk1.png'],
+  },
+  peon: {
+    idle:  ['assets/img/peon_idle1.png'],
+    walk:  ['assets/img/peon_walk1.png', 'assets/img/peon_walk2.png'],
+    talk:  ['assets/img/peon_talk1.png'],
+  },
+  yq: {
+    idle:  ['assets/img/yq_idle1.png'],
+    walk:  ['assets/img/yq_walk1.png', 'assets/img/yq_walk2.png'],
+    talk:  ['assets/img/yq_talk1.png'],
+  },
+};
+
 const VOICE_POOL = {
   peasant: {
-    // 中文 War3 农民语音(文件名翻译):
-    // yes = "好的老爷" / "好的"
-    // what = "啥"/"什么"/"你想干嘛"
-    // pissed = "又要干活"/"忙啊忙"/"忙着呢别烦我" 等
-    // ready = "准备干活"
-    // yesattack = "行了我去送死了"
-    // warcry = "相信自己我能行"
-    yes: ['peasantyes1', 'peasantyes2', 'peasantyes3', 'peasantyes4'],
-    what: ['peasantwhat1', 'peasantwhat2', 'peasantwhat3', 'peasantwhat4'],
-    pissed: ['peasantpissed1', 'peasantpissed2', 'peasantpissed3', 'peasantpissed4', 'peasantpissed5'],
-    ready: ['peasantready1'],
+    yes:       ['peasantyes1', 'peasantyes2', 'peasantyes3', 'peasantyes4'],
+    what:      ['peasantwhat1', 'peasantwhat2', 'peasantwhat3', 'peasantwhat4'],
+    pissed:    ['peasantpissed1', 'peasantpissed2', 'peasantpissed3', 'peasantpissed4', 'peasantpissed5'],
+    ready:     ['peasantready1'],
     yesattack: ['peasantyesattack1', 'peasantyesattack2', 'peasantyesattack3', 'peasantyesattack4'],
-    warcry: ['peasantwarcry1'],
+    warcry:    ['peasantwarcry1'],
   },
   peon: {
-    yes: ['peonyes1', 'peonyes2', 'peonyes3', 'peonyes4'],
-    what: ['peonwhat1', 'peonwhat2', 'peonwhat3', 'peonwhat4'],
-    pissed: ['peonpissed1', 'peonpissed2', 'peonpissed3', 'peonpissed4'],
-    ready: ['peonready1'],
+    yes:       ['peonyes1', 'peonyes2', 'peonyes3', 'peonyes4'],
+    what:      ['peonwhat1', 'peonwhat2', 'peonwhat3', 'peonwhat4'],
+    pissed:    ['peonpissed1', 'peonpissed2', 'peonpissed3', 'peonpissed4'],
+    ready:     ['peonready1'],
     yesattack: ['peonyesattack1', 'peonyesattack2', 'peonyesattack3'],
-    warcry: ['peonwarcry1'],
-  }
+    warcry:    ['peonwarcry1'],
+  },
+  // YQ 无语音
 };
 
-// 气泡台词 —— 不和音频严格对应,只是配合情绪
 const BUBBLE_LINES = {
   peasant: {
-    yes: ['好的老爷!', '收到!', '没问题!', '马上!'],
-    what: ['啥?', '你想干嘛?', '叫我?', '咋了?'],
-    pissed: ['又要干活...', '忙着呢,别烦我', '能不能歇会儿', '我累了!'],
+    yes:       ['好的老爷!', '收到!', '没问题!', '马上!'],
+    what:      ['啥?', '你想干嘛?', '叫我?', '咋了?'],
+    pissed:    ['又要干活...', '忙着呢,别烦我', '能不能歇会儿', '我累了!'],
     yesattack: ['行了,我去送死了', '上!', '冲啊!'],
-    warcry: ['相信自己我能行!'],
+    warcry:    ['相信自己我能行!'],
   },
   peon: {
-    yes: ['是,老大', 'ok!', '懂了', '马上去'],
-    what: ['啊?', '咋啦?', '叫俺?'],
-    pissed: ['忙啊忙', '我可不是那种兽人', '别催我啊', '砍累了'],
+    yes:       ['是,老大', 'ok!', '懂了', '马上去'],
+    what:      ['啊?', '咋啦?', '叫俺?'],
+    pissed:    ['忙啊忙', '我可不是那种兽人', '别催我啊', '砍累了'],
     yesattack: ['我去会会他们!', '战斗!'],
-    warcry: ['为了部落!'],
-  }
+    warcry:    ['为了部落!'],
+  },
+  // YQ 的台词池 —— 工程师日常 / 与 AI 共事 / 偶尔吐槽 / 偶尔输出
+  yq: {
+    idle: [
+      '今天又记一笔',
+      '这 bug 是 AI 写的吧?',
+      'AI 又把单测删了...',
+      '我先去喝口水',
+      '在炼新科技',
+      'Doubao 同行,但不懂业务',
+      '今天的 PR 终于绿了',
+      '又是被 Xcode 索引拖死的一天',
+      '其实 iOS 也能用上 AI',
+      '我不是在划水,我在思考架构',
+      '让 AI 写代码,我来写人',
+      '又要开评审会了',
+      '这 prompt 是不是该再调调',
+      'commit 信息我让 AI 写',
+      'review 我自己来',
+      '今天又学了点新东西',
+      '把它记到铁匠铺里',
+    ],
+  },
 };
 
-// 点击次数 → 情绪升级机制
-const CLICK_STATE = { peasant: 0, peon: 0 };
+// =========================================================
+// 2. 全局状态
+// =========================================================
+const CLICK_STATE = { peasant: 0, peon: 0, yq: 0 };
 let totalClicks = 0;
+let currentAudio = null;   // 🔥 关键: 单声道,新音频会取消旧音频
 
-function randomFromArray(arr) {
+// 行走范围:水平 5% ~ 95% (px 算)
+const STAGE = document.getElementById('stage');
+
+// =========================================================
+// 3. 工具函数
+// =========================================================
+function randomFrom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function getStageWidth() {
+  return STAGE.clientWidth || window.innerWidth;
+}
+
+// =========================================================
+// 4. 音频播放(带取消机制)
+// =========================================================
+function playVoice(role, emotion) {
+  if (!VOICE_POOL[role]) return null; // YQ 无声
+  const pool = VOICE_POOL[role][emotion];
+  if (!pool || pool.length === 0) return null;
+
+  // 🔥 取消正在播放的音频
+  if (currentAudio) {
+    try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
+    currentAudio = null;
+  }
+
+  const file = randomFrom(pool);
+  const audio = new Audio(`assets/audio/${role}/${file}.wav`);
+  audio.volume = 0.85;
+  audio.play().catch(err => console.warn('音频播放失败:', err));
+  currentAudio = audio;
+  // 播完清空引用,避免后续误取消
+  audio.addEventListener('ended', () => {
+    if (currentAudio === audio) currentAudio = null;
+  });
+  return audio;
+}
+
+// =========================================================
+// 5. 气泡显示
+// =========================================================
+function showBubble(role, text) {
+  const bubble = document.getElementById(`bubble-${role}`);
+  if (!bubble) return;
+  bubble.textContent = text;
+  bubble.classList.add('show');
+  clearTimeout(bubble._timer);
+  bubble._timer = setTimeout(() => bubble.classList.remove('show'), 2200);
+}
+
+// =========================================================
+// 6. NPC 控制器(每个 NPC 一个实例,管动画 + 走路)
+// =========================================================
+class NPC {
+  constructor(role, startXPercent) {
+    this.role = role;
+    this.el = document.getElementById(role);
+    this.img = document.getElementById(`img-${role}`);
+    this.frames = SPRITES[role];
+
+    // 位置(px)
+    this.x = (getStageWidth() * startXPercent) / 100;
+    this.targetX = this.x;
+    this.speed = 0.6; // px / frame
+    this.state = 'idle'; // idle | walk | talk
+    this.frameIdx = 0;
+    this.frameTimer = 0;
+    this.lastTs = performance.now();
+
+    // 决策计时器:每隔 N ms 决定下一步做什么
+    this.decisionTimer = 0;
+    this.nextDecision = 1500 + Math.random() * 2000;
+
+    this.applyPos();
+    requestAnimationFrame(this.tick.bind(this));
+  }
+
+  applyPos() {
+    this.el.style.left = `${this.x}px`;
+    this.el.style.transform = 'translateX(-50%)';
+  }
+
+  setState(state) {
+    if (this.state === state) return;
+    this.state = state;
+    this.frameIdx = 0;
+    this.frameTimer = 0;
+    this.updateFrame();
+  }
+
+  updateFrame() {
+    const pool = this.frames[this.state] || this.frames.idle;
+    const src = pool[this.frameIdx % pool.length];
+    if (this.img.getAttribute('src') !== src) {
+      this.img.setAttribute('src', src);
+    }
+  }
+
+  setFacing(dir) {
+    this.el.dataset.facing = dir;
+  }
+
+  pickNewTarget() {
+    const w = getStageWidth();
+    // 在 5% ~ 95% 范围随机
+    const min = w * 0.05;
+    const max = w * 0.95;
+    this.targetX = min + Math.random() * (max - min);
+    this.setFacing(this.targetX > this.x ? 'right' : 'left');
+    this.setState('walk');
+  }
+
+  talkOnce(durationMs = 600) {
+    this.setState('talk');
+    clearTimeout(this._talkTimer);
+    this._talkTimer = setTimeout(() => {
+      // 说完回到 idle(或者继续 walk 如果之前在走)
+      this.setState('idle');
+      this.decisionTimer = 0;
+      this.nextDecision = 1500 + Math.random() * 2000;
+    }, durationMs);
+  }
+
+  tick(ts) {
+    const dt = Math.min(50, ts - this.lastTs);
+    this.lastTs = ts;
+
+    // 行走逻辑
+    if (this.state === 'walk') {
+      const dx = this.targetX - this.x;
+      if (Math.abs(dx) < 2) {
+        // 到达,切回 idle 等待下次决策
+        this.x = this.targetX;
+        this.applyPos();
+        this.setState('idle');
+        this.decisionTimer = 0;
+        this.nextDecision = 1500 + Math.random() * 3000;
+      } else {
+        const step = Math.sign(dx) * this.speed * (dt / 16.67);
+        this.x += step;
+        this.applyPos();
+      }
+    }
+
+    // 帧动画切换
+    this.frameTimer += dt;
+    const cadence = this.state === 'walk' ? 220 : 600;
+    if (this.frameTimer >= cadence) {
+      this.frameTimer = 0;
+      this.frameIdx++;
+      this.updateFrame();
+    }
+
+    // 自主决策:idle 状态下隔一段时间随机决定下一步
+    if (this.state === 'idle') {
+      this.decisionTimer += dt;
+      if (this.decisionTimer >= this.nextDecision) {
+        this.decisionTimer = 0;
+        // 60% 概率走起来,40% 继续发呆
+        if (Math.random() < 0.6) {
+          this.pickNewTarget();
+        } else {
+          this.nextDecision = 1500 + Math.random() * 2500;
+        }
+      }
+    }
+
+    requestAnimationFrame(this.tick.bind(this));
+  }
+}
+
+// =========================================================
+// 7. 实例化 3 个 NPC
+// =========================================================
+const npcs = {
+  peasant: new NPC('peasant', 25),
+  peon:    new NPC('peon',    50),
+  yq:      new NPC('yq',      75),
+};
+
+// =========================================================
+// 8. 点击交互
+// =========================================================
 function getEmotionByClickCount(count) {
-  // 第 1 次: yes (友好)
-  // 2-3 次: what (疑惑)
-  // 4-6 次: pissed (烦躁)
-  // 7+ 次: pissed (彻底烦了,主要走 pissed)
-  // 偶尔 (10% 概率) 触发 yesattack 或 warcry 当彩蛋
   if (Math.random() < 0.08) {
     return Math.random() < 0.5 ? 'yesattack' : 'warcry';
   }
@@ -258,70 +503,108 @@ function getEmotionByClickCount(count) {
   return 'pissed';
 }
 
-function playVoice(role, emotion) {
-  const pool = VOICE_POOL[role][emotion];
-  if (!pool || pool.length === 0) return;
-  const file = randomFromArray(pool);
-  const audio = new Audio(`assets/audio/${role}/${file}.wav`);
-  audio.volume = 0.85;
-  audio.play().catch(err => console.warn('音频播放失败:', err));
-  return audio;
-}
-
-function showBubble(role, emotion) {
-  const pool = BUBBLE_LINES[role][emotion];
-  if (!pool || pool.length === 0) return;
-  const line = randomFromArray(pool);
-  const bubble = document.getElementById(`bubble-${role}`);
-  bubble.textContent = line;
-  bubble.classList.add('show');
-  // 自动收起
-  clearTimeout(bubble._timer);
-  bubble._timer = setTimeout(() => bubble.classList.remove('show'), 1800);
-}
-
 function triggerNPC(role) {
   CLICK_STATE[role] += 1;
   totalClicks += 1;
   document.getElementById('counter').textContent = totalClicks;
 
+  const npc = npcs[role];
+
+  if (role === 'yq') {
+    // YQ 没有语音,只冒话,且气泡内容固定走 idle 池
+    const line = randomFrom(BUBBLE_LINES.yq.idle);
+    showBubble('yq', line);
+    npc.talkOnce(900);
+    npc.el.classList.remove('talking');
+    void npc.el.offsetWidth;
+    npc.el.classList.add('talking');
+    return;
+  }
+
   const emotion = getEmotionByClickCount(CLICK_STATE[role]);
-  showBubble(role, emotion);
+  const lines = BUBBLE_LINES[role][emotion] || [];
+  if (lines.length) showBubble(role, randomFrom(lines));
   playVoice(role, emotion);
 
-  // 视觉抖动反馈
-  const npc = document.getElementById(role);
-  npc.classList.remove('talking');
-  void npc.offsetWidth; // 强制重排,重置动画
-  npc.classList.add('talking');
+  // 切到 talk 帧
+  npc.talkOnce(800);
+
+  // 视觉抖动
+  npc.el.classList.remove('talking');
+  void npc.el.offsetWidth;
+  npc.el.classList.add('talking');
 }
 
-// 绑定点击
 document.querySelectorAll('.npc').forEach(el => {
-  el.addEventListener('click', () => triggerNPC(el.dataset.role));
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    triggerNPC(el.dataset.role);
+  });
 });
 
-// 全局集结按钮 —— 两个 NPC 同时喊话
+// =========================================================
+// 9. 全局集结按钮 —— 农民 + 苦工 + YQ 都喊
+// =========================================================
 document.getElementById('global-btn').addEventListener('click', () => {
   triggerNPC('peasant');
-  setTimeout(() => triggerNPC('peon'), 300);
+  setTimeout(() => triggerNPC('peon'), 350);
+  setTimeout(() => {
+    // YQ 的集结台词单独搞个燃一点的
+    showBubble('yq', '走,炼点新东西去!');
+    npcs.yq.talkOnce(900);
+    npcs.yq.el.classList.remove('talking');
+    void npcs.yq.el.offsetWidth;
+    npcs.yq.el.classList.add('talking');
+  }, 700);
 });
 
-// 入场播报 —— 页面加载 1 秒后,人族农民先来一句"准备干活"
+// =========================================================
+// 10. 入场播报 + 环境氛围
+// =========================================================
 window.addEventListener('load', () => {
   setTimeout(() => {
-    showBubble('peasant', 'ready');
+    showBubble('peasant', '准备干活!');
     playVoice('peasant', 'ready');
+    npcs.peasant.talkOnce(700);
   }, 1000);
+
+  setTimeout(() => {
+    showBubble('yq', '欢迎来到我的铁匠铺');
+    npcs.yq.talkOnce(900);
+  }, 2200);
 });
 
-// 每隔 45 秒,随机一个 NPC 自己冒话(环境氛围)
+// 农民/苦工:每 30~50 秒随机一个自言自语
 setInterval(() => {
   const role = Math.random() < 0.5 ? 'peasant' : 'peon';
   const emotion = Math.random() < 0.6 ? 'pissed' : 'what';
-  showBubble(role, emotion);
+  const lines = BUBBLE_LINES[role][emotion];
+  if (lines && lines.length) showBubble(role, randomFrom(lines));
   playVoice(role, emotion);
-}, 45000);
+  npcs[role].talkOnce(700);
+}, 38000);
+
+// YQ:每 12~20 秒冒一句话(无声)
+function scheduleYQTalk() {
+  const delay = 12000 + Math.random() * 8000;
+  setTimeout(() => {
+    const line = randomFrom(BUBBLE_LINES.yq.idle);
+    showBubble('yq', line);
+    npcs.yq.talkOnce(900);
+    scheduleYQTalk();
+  }, delay);
+}
+scheduleYQTalk();
+
+// 窗口 resize:把 NPC 限制回新视窗范围内
+window.addEventListener('resize', () => {
+  const w = getStageWidth();
+  Object.values(npcs).forEach(n => {
+    n.x = Math.min(Math.max(n.x, w * 0.05), w * 0.95);
+    n.targetX = Math.min(Math.max(n.targetX, w * 0.05), w * 0.95);
+    n.applyPos();
+  });
+});
 </script>
 
 </body>
