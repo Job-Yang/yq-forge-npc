@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>YQ 铁匠铺 · 打工人语音面板 v2.5</title>
+<title>YQ 铁匠铺 · 打工人语音面板 v2.5.1</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -175,6 +175,13 @@
     font-weight: bold;
     font-family: "Courier New", "PingFang SC", monospace;
     letter-spacing: 1px;
+    /* 关键修复:气泡不再被坍缩成竖排 */
+    width: max-content;
+    min-width: 80px;
+    max-width: min(280px, 60vw);
+    white-space: normal;
+    word-break: keep-all;       /* 不在汉字中间断行 */
+    overflow-wrap: break-word;  /* 但允许整词换行避免溢出 */
     /* 多层 box-shadow 模拟像素台阶边框 */
     box-shadow:
       0 0 0 3px #2a1a05,
@@ -184,8 +191,6 @@
     border-radius: 2px;
     transition: transform 0.22s cubic-bezier(0.68, -0.55, 0.27, 1.55);
     pointer-events: none;
-    max-width: 280px;
-    white-space: normal;
     text-align: center;
     line-height: 1.35;
     z-index: 9;
@@ -315,7 +320,7 @@
 </div>
 
 <div class="footer">
-  YQ 的铁匠铺 · 打工人语音面板 v2.5 · 点击数:<span id="counter">0</span>
+  YQ 的铁匠铺 · 打工人语音面板 v2.5.1 · 点击数:<span id="counter">0</span>
 </div>
 
 <button class="mute-btn" id="mute-btn" title="切换语音">🔊 有声</button>
