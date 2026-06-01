@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>YQ 铁匠铺 · 打工人语音面板 v2</title>
+<title>YQ 铁匠铺 · 打工人语音面板 v2.4</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -24,6 +24,101 @@
     background: linear-gradient(180deg, rgba(20,15,10,0.10) 0%, rgba(20,15,10,0.30) 100%);
     pointer-events: none;
     z-index: 1;
+    transition: background 1.5s ease;
+  }
+
+  /* ============ 天气系统 ============ */
+  /* 天气总开关挂在 body 上,通过 data-weather 控制 */
+  body[data-weather="sunny"]::before {
+    background: linear-gradient(180deg, rgba(255,220,140,0.10) 0%, rgba(255,180,80,0.20) 100%);
+  }
+  body[data-weather="cloudy"]::before {
+    background: linear-gradient(180deg, rgba(120,120,130,0.25) 0%, rgba(80,80,90,0.45) 100%);
+  }
+  body[data-weather="rain"]::before {
+    background: linear-gradient(180deg, rgba(40,55,75,0.45) 0%, rgba(20,30,50,0.65) 100%);
+  }
+  body[data-weather="night"]::before {
+    background: linear-gradient(180deg, rgba(15,15,40,0.55) 0%, rgba(5,5,20,0.80) 100%);
+  }
+
+  /* 雨幕 —— CSS 重复线性渐变 */
+  .weather-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+  body[data-weather="rain"] .weather-layer.rain { opacity: 1; }
+  .weather-layer.rain {
+    background-image: repeating-linear-gradient(
+      105deg,
+      transparent 0,
+      transparent 6px,
+      rgba(200,220,255,0.35) 6px,
+      rgba(200,220,255,0.35) 7px,
+      transparent 7px,
+      transparent 14px
+    );
+    animation: rain-fall 0.6s linear infinite;
+  }
+  @keyframes rain-fall {
+    0%   { background-position: 0 0; }
+    100% { background-position: -28px 60px; }
+  }
+
+  /* 夜晚星空 —— 多重 radial-gradient 模拟像素星点 */
+  body[data-weather="night"] .weather-layer.stars { opacity: 1; }
+  .weather-layer.stars {
+    background-image:
+      radial-gradient(2px 2px at 12% 18%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 28% 7%, #ffe080 50%, transparent 51%),
+      radial-gradient(2px 2px at 47% 22%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 63% 11%, #fff 50%, transparent 51%),
+      radial-gradient(2px 2px at 82% 25%, #ffd766 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 91% 8%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 5% 32%, #fff 50%, transparent 51%),
+      radial-gradient(2px 2px at 35% 40%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 72% 35%, #fff 50%, transparent 51%);
+    animation: twinkle 3s ease-in-out infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+  /* 晴天 —— 顶部柔光 */
+  body[data-weather="sunny"] .weather-layer.sun { opacity: 1; }
+  .weather-layer.sun {
+    background: radial-gradient(circle at 75% 8%, rgba(255,230,120,0.55) 0%, rgba(255,230,120,0.15) 12%, transparent 28%);
+  }
+
+  /* 阴天 —— 上方阴影压暗 */
+  body[data-weather="cloudy"] .weather-layer.cloud { opacity: 1; }
+  .weather-layer.cloud {
+    background: linear-gradient(180deg, rgba(60,60,70,0.35) 0%, transparent 35%);
+  }
+
+  /* 天气指示器(右上角小标签) */
+  .weather-tag {
+    position: absolute;
+    top: 12px; right: 12px;
+    z-index: 10;
+    background: rgba(0,0,0,0.55);
+    color: #ffe9a8;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    border: 1px solid rgba(255,233,168,0.3);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  .weather-tag:hover {
+    background: rgba(40,30,20,0.85);
   }
 
   /* 顶部 hint 条 */
@@ -184,6 +279,32 @@
   .global-btn:hover {
     background: rgba(170,60,40,0.95);
   }
+
+  /* 静音切换按钮 */
+  .mute-btn {
+    position: absolute;
+    bottom: 8px; right: 92px;
+    z-index: 10;
+    background: rgba(40,30,20,0.85);
+    color: #ffe9a8;
+    border: 1px solid #ffd766;
+    padding: 6px 10px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-family: inherit;
+    min-width: 64px;
+    text-align: center;
+  }
+  .mute-btn:hover {
+    background: rgba(70,55,35,0.95);
+  }
+  .mute-btn.muted {
+    background: rgba(60,60,60,0.85);
+    color: #999;
+    border-color: #666;
+  }
 </style>
 </head>
 <body>
@@ -191,6 +312,15 @@
 <div class="hint">
   <span class="key">👆 点击 NPC</span> 听他说话 · <span class="key">他们会自己瞎逛</span>
 </div>
+
+<!-- 天气覆盖层(4 种共存,通过 body[data-weather] 控制 opacity) -->
+<div class="weather-layer sun"></div>
+<div class="weather-layer cloud"></div>
+<div class="weather-layer rain"></div>
+<div class="weather-layer stars"></div>
+
+<!-- 右上角天气指示器,点击手动切换 -->
+<div class="weather-tag" id="weather-tag" title="点击切换天气">☀️ 晴</div>
 
 <div class="stage" id="stage">
   <!-- 人族农民 -->
@@ -216,9 +346,10 @@
 </div>
 
 <div class="footer">
-  YQ 的铁匠铺 · 打工人语音面板 v2 · 点击数:<span id="counter">0</span>
+  YQ 的铁匠铺 · 打工人语音面板 v2.4 · 点击数:<span id="counter">0</span>
 </div>
 
+<button class="mute-btn" id="mute-btn" title="切换语音">🔊 有声</button>
 <button class="global-btn" id="global-btn">🔔 集结!</button>
 
 <script>
@@ -278,26 +409,30 @@ const BUBBLE_LINES = {
     yesattack: ['我去会会他们!', '战斗!'],
     warcry:    ['为了部落!'],
   },
-  // YQ 的台词池 —— 工程师日常 / 与 AI 共事 / 偶尔吐槽 / 偶尔输出
+  // YQ 的台词池 —— 工程师 × AI 协作日常吐槽
   yq: {
     idle: [
-      '今天又记一笔',
-      '这 bug 是 AI 写的吧?',
-      'AI 又把单测删了...',
-      '我先去喝口水',
-      '在炼新科技',
-      'Doubao 同行,但不懂业务',
-      '今天的 PR 终于绿了',
-      '又是被 Xcode 索引拖死的一天',
-      '其实 iOS 也能用上 AI',
-      '我不是在划水,我在思考架构',
-      '让 AI 写代码,我来写人',
-      '又要开评审会了',
-      '这 prompt 是不是该再调调',
-      'commit 信息我让 AI 写',
-      'review 我自己来',
-      '今天又学了点新东西',
-      '把它记到铁匠铺里',
+      'AI的地震来了,可我却测不出震级(狗头)',
+      'AI比我更懂这个项目',
+      '我负责拍脑袋,AI 负责拍键盘',
+      'AI 说"你说得对",我心里一紧',
+      '又被 AI 一本正经地骗了',
+      'AI 把 TODO 实现了,逻辑是错的',
+      '我现在的工作是给AI当小弟',
+      'AI 给的方案太通用了,像没说',
+      '让它简化一下,它给我重写了',
+      '问它"为什么",它开始道歉',
+      'Diff 太长,AI 自己都不看了',
+      '幻觉是它的,背锅是我的',
+      '今天的灵感来自一次 retry',
+      '我不是在摸鱼,我在等GPT 5.5',
+      '能跑就别动,动了就别问我',
+      '有什么需求,跟我的Agent去说吧',
+      '让它解释代码,它先道了个歉',
+      'AI 写的注释比代码长',
+      '我让它再想想,它换了个错法',
+      '回滚到 AI 介入之前',
+      'AI时代我还是苦工,只是挖矿的方式不一样了',
     ],
   },
 };
@@ -308,6 +443,7 @@ const BUBBLE_LINES = {
 const CLICK_STATE = { peasant: 0, peon: 0, yq: 0 };
 let totalClicks = 0;
 let currentAudio = null;   // 🔥 关键: 单声道,新音频会取消旧音频
+let isMuted = (localStorage.getItem('yq_forge_muted') === '1');  // 🔇 静音状态,持久化
 
 // 行走范围:水平 5% ~ 95% (px 算)
 const STAGE = document.getElementById('stage');
@@ -328,6 +464,7 @@ function getStageWidth() {
 // =========================================================
 function playVoice(role, emotion) {
   if (!VOICE_POOL[role]) return null; // YQ 无声
+  if (isMuted) return null;           // 🔇 用户静音了
   const pool = VOICE_POOL[role][emotion];
   if (!pool || pool.length === 0) return null;
 
@@ -558,6 +695,35 @@ document.getElementById('global-btn').addEventListener('click', () => {
   }, 700);
 });
 
+// 🔇 静音按钮：切换 isMuted + 持久化 + 当场掐掉正在播的
+const muteBtn = document.getElementById('mute-btn');
+function refreshMuteBtn() {
+  if (isMuted) {
+    muteBtn.classList.add('muted');
+    muteBtn.textContent = '🔇 已静音';
+    muteBtn.title = '点击恢复语音';
+  } else {
+    muteBtn.classList.remove('muted');
+    muteBtn.textContent = '🔊 有声';
+    muteBtn.title = '点击静音(只保留台词框)';
+  }
+}
+muteBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  isMuted = !isMuted;
+  localStorage.setItem('yq_forge_muted', isMuted ? '1' : '0');
+  // 立刻掐掉正在播的
+  if (isMuted && currentAudio) {
+    try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (_) {}
+    currentAudio = null;
+  }
+  refreshMuteBtn();
+  // 给个轻反馈
+  showBubble('yq', isMuted ? '世界安静了' : '吵起来吧!');
+  npcs.yq.talkOnce(700);
+});
+refreshMuteBtn();
+
 // =========================================================
 // 10. 入场播报 + 环境氛围
 // =========================================================
@@ -604,6 +770,46 @@ window.addEventListener('resize', () => {
     n.targetX = Math.min(Math.max(n.targetX, w * 0.05), w * 0.95);
     n.applyPos();
   });
+});
+
+// =========================================================
+// 11. 天气系统 —— 4 种天气轮转,每 45s 切一次,YQ 顺嘴评论
+// =========================================================
+const WEATHER_ORDER = ['sunny', 'cloudy', 'rain', 'night'];
+const WEATHER_META = {
+  sunny:  { tag: '☀️ 晴',   yqLines: ['天好,代码也跑得欢', '太阳出来了,我还在改 bug', '阳光这么好,适合等 CI'] },
+  cloudy: { tag: '☁️ 多云', yqLines: ['阴天最适合写代码', '云挺厚,跟我的 PR 一样', '不晒,不冷,刚好 review'] },
+  rain:   { tag: '🌧 雨',   yqLines: ['下雨了,服务器别也下', '雨声陪我加班', '下雨天和 AI 更配哦'] },
+  night:  { tag: '🌙 夜',   yqLines: ['天黑了,AI 也该睡了吧', '夜了,但 Agent 不睡', '深夜的 commit 最危险'] },
+};
+let weatherIdx = 0;
+const weatherTag = document.getElementById('weather-tag');
+
+function setWeather(name, silent = false) {
+  document.body.setAttribute('data-weather', name);
+  const meta = WEATHER_META[name];
+  if (weatherTag) weatherTag.textContent = meta.tag;
+  if (!silent && npcs.yq) {
+    const line = randomFrom(meta.yqLines);
+    showBubble('yq', line);
+    npcs.yq.talkOnce(800);
+  }
+}
+
+// 初始 sunny,首次不冒泡
+setWeather('sunny', true);
+
+// 每 45 秒切换
+setInterval(() => {
+  weatherIdx = (weatherIdx + 1) % WEATHER_ORDER.length;
+  setWeather(WEATHER_ORDER[weatherIdx]);
+}, 45000);
+
+// 点击右上角标签手动切换
+weatherTag.addEventListener('click', (e) => {
+  e.stopPropagation();
+  weatherIdx = (weatherIdx + 1) % WEATHER_ORDER.length;
+  setWeather(WEATHER_ORDER[weatherIdx]);
 });
 </script>
 
