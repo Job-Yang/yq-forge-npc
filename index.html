@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>YQ 铁匠铺 · 打工人语音面板 v2.6</title>
+<title>YQ 铁匠铺 · 打工人语音面板 v2.7.1</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -323,6 +323,124 @@
     color: #7a6040;
     letter-spacing: 1px;
   }
+
+  /* ============ v2.7 金矿 ============ */
+  .goldmine {
+    position: absolute;
+    bottom: 4%;
+    right: 3%;
+    width: 220px;
+    height: auto;
+    z-index: 4;
+    pointer-events: none;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.5));
+  }
+  .goldmine img { width: 100%; height: auto; object-fit: contain; }
+  .goldmine.shake { animation: mine-shake 0.4s ease-in-out; }
+  @keyframes mine-shake {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-2px, 1px); }
+    50% { transform: translate(2px, -1px); }
+    75% { transform: translate(-1px, 2px); }
+  }
+  .gold-spark {
+    position: absolute;
+    top: 30%; left: 40%;
+    width: 8px; height: 8px;
+    background: #ffd766;
+    border-radius: 50%;
+    opacity: 0;
+    box-shadow: 0 0 12px 4px #ffd766;
+  }
+  .goldmine.spark .gold-spark {
+    animation: spark-fly 0.6s ease-out;
+  }
+  @keyframes spark-fly {
+    0% { opacity: 1; transform: translate(0, 0) scale(1); }
+    100% { opacity: 0; transform: translate(40px, -60px) scale(0.3); }
+  }
+
+  /* ============ v2.7 金币计数器 ============ */
+  .gold-counter {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 50;
+    background: rgba(40,30,20,0.85);
+    border: 2px solid #ffd766;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #ffe9a8;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 0 #000;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .gold-counter.bump { animation: gold-bump 0.4s ease; }
+  @keyframes gold-bump {
+    0%, 100% { transform: scale(1); }
+    40% { transform: scale(1.18); color: #fff; }
+  }
+  .gold-icon { font-size: 16px; }
+  .gold-tip {
+    font-size: 10px;
+    color: #c7a060;
+    margin-left: 10px;
+    letter-spacing: 0;
+  }
+  .gold-counter.unlocked .gold-tip {
+    color: #6ee765;
+  }
+
+  /* ============ v2.7 豆包偷窥 ============ */
+  .doubao-peek {
+    position: fixed;
+    z-index: 45;
+    width: 70px;
+    height: 75px;
+    opacity: 0;
+    pointer-events: none;
+    image-rendering: pixelated;
+    transition: opacity 0.5s ease, transform 1s ease;
+    filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5));
+  }
+  .doubao-peek img { width: 100%; height: 100%; object-fit: contain; }
+  .doubao-peek.peek-right {
+    right: -40px;
+    top: 22%;
+    transform: translateX(0);
+  }
+  .doubao-peek.peek-right.show {
+    opacity: 1;
+    transform: translateX(-50px);
+  }
+  .doubao-peek.peek-left {
+    left: -40px;
+    top: 35%;
+    transform: translateX(0) scaleX(-1);
+  }
+  .doubao-peek.peek-left.show {
+    opacity: 1;
+    transform: translateX(50px) scaleX(-1);
+  }
+  .doubao-peek.peek-top {
+    top: -40px;
+    left: 60%;
+    transform: translateY(0) rotate(180deg);
+  }
+  .doubao-peek.peek-top.show {
+    opacity: 1;
+    transform: translateY(50px) rotate(180deg);
+  }
+
+  /* ============ v2.7 深夜彩蛋调色 ============ */
+  body.late-night::before {
+    background: linear-gradient(180deg, rgba(15,10,30,0.45) 0%, rgba(10,5,25,0.65) 100%);
+  }
 </style>
 </head>
 <body>
@@ -346,6 +464,23 @@
 
 <!-- 天气特效 canvas(雨/闪电/月亮/星星) -->
 <canvas class="fx-canvas" id="fx-canvas"></canvas>
+
+<!-- v2.7 金矿(地面右侧固定位置) -->
+<div class="goldmine" id="goldmine" title="苦工/农民会自动来挖矿">
+  <img src="assets/img/goldmine.png" alt="Gold Mine" />
+  <div class="gold-spark"></div>
+</div>
+
+<!-- v2.7 豆包脸偷窥(随机从边缘出现) -->
+<div class="doubao-peek" id="doubao-peek">
+  <img src="assets/img/doubao_peek.png" alt="豆包" />
+</div>
+
+<!-- v2.7 金币计数器(左上角) -->
+<div class="gold-counter" id="gold-counter" title="苦工和农民挖到的金币">
+  <span class="gold-icon">🪙</span><span id="gold-num">0</span>
+  <span class="gold-tip">解锁第 4 个 NPC: 100</span>
+</div>
 
 <!-- 右上角天气指示器,点击手动切换 -->
 <div class="weather-tag" id="weather-tag" title="点击切换天气">☀️ 晴</div>
@@ -374,7 +509,7 @@
 </div>
 
 <div class="footer">
-  YQ 的铁匠铺 · 打工人语音面板 v2.6 · 点击数:<span id="counter">0</span>
+  YQ 的铁匠铺 · 打工人语音面板 v2.7.1 · 点击数:<span id="counter">0</span>
 </div>
 
 <button class="mute-btn" id="mute-btn" title="切换语音">🔊 有声</button>
@@ -391,12 +526,14 @@
     'assets/img/peasant_idle1.png',
     'assets/img/peon_idle1.png',
     'assets/img/yq_idle1.png',
+    'assets/img/goldmine.png',
   ];
-  // 后台继续加载：walk/talk 帧,不阻塞首屏(9 张)
+  // 后台继续加载：walk/talk 帧 + 豆包,不阻塞首屏
   const SECONDARY = [
     'assets/img/peasant_walk1.png', 'assets/img/peasant_walk2.png', 'assets/img/peasant_talk1.png',
     'assets/img/peon_walk1.png', 'assets/img/peon_walk2.png', 'assets/img/peon_talk1.png',
     'assets/img/yq_walk1.png', 'assets/img/yq_walk2.png', 'assets/img/yq_talk1.png',
+    'assets/img/doubao_peek.png',
   ];
 
   const loader = document.getElementById('loader');
@@ -576,7 +713,9 @@ function showBubble(role, text) {
   bubble.textContent = text;
   bubble.classList.add('show');
   clearTimeout(bubble._timer);
-  bubble._timer = setTimeout(() => bubble.classList.remove('show'), 2200);
+  // 动态时长:基础 3s + 每字 0.18s,封顶 9s,最少 3s
+  const dur = Math.max(3000, Math.min(9000, 3000 + text.length * 180));
+  bubble._timer = setTimeout(() => bubble.classList.remove('show'), dur);
 }
 
 // =========================================================
@@ -1134,6 +1273,202 @@ weatherTag.addEventListener('click', (e) => {
   weatherIdx = (weatherIdx + 1) % WEATHER_ORDER.length;
   setWeather(WEATHER_ORDER[weatherIdx]);
 });
+
+// =========================================================
+// v2.7 - 金币系统 + 挖矿行为
+// =========================================================
+const GoldSystem = {
+  amount: parseInt(localStorage.getItem('yq_forge_gold') || '0', 10),
+  el: document.getElementById('gold-counter'),
+  numEl: document.getElementById('gold-num'),
+  tipEl: null,
+  render() {
+    this.numEl.textContent = this.amount;
+    this.el.classList.remove('bump');
+    void this.el.offsetWidth;
+    this.el.classList.add('bump');
+    if (this.amount >= 100) this.el.classList.add('unlocked');
+    localStorage.setItem('yq_forge_gold', String(this.amount));
+  },
+  add(n) {
+    this.amount += n;
+    this.render();
+    if (this.amount === 100) {
+      showBubble('yq', '攒到 100 金了!第 4 个 NPC 解锁中...(v2.8 见)');
+    }
+  }
+};
+GoldSystem.render();
+
+// 挖矿台词池
+const MINE_LINES = {
+  peasant: [
+    '我开始挖了…',
+    '这矿真硬',
+    '又是新的一天,挖!',
+    '这一镐下去就是 1 个钱',
+    '老板看到了吗?',
+  ],
+  peon: [
+    'Work work…',
+    '工作 工作',
+    '苦工不苦',
+    '这破矿挖到啥时候',
+    '一镐又一镐',
+  ],
+};
+
+// 给 NPC 加挖矿能力
+NPC.prototype.goMine = function() {
+  if (this.role === 'yq') return; // YQ 不挖矿,他是工程师
+  if (this._mining) return;
+  this._mining = true;
+  const mineEl = document.getElementById('goldmine');
+  const mineRect = mineEl.getBoundingClientRect();
+  const stageRect = document.getElementById('stage').getBoundingClientRect();
+  // 矿口稍微偏左站位
+  const minePosX = mineRect.left - stageRect.left + mineRect.width * 0.1;
+  this.targetX = minePosX;
+  this.setFacing(this.targetX > this.x ? 'right' : 'left');
+  this.setState('walk');
+  this._mineCheck = setInterval(() => {
+    if (Math.abs(this.x - this.targetX) < 5) {
+      clearInterval(this._mineCheck);
+      this._doMine();
+    }
+  }, 100);
+};
+
+NPC.prototype._doMine = function() {
+  // 到达矿口,开始挖矿
+  this.setState('talk'); // 借用 talk 帧当挖矿姿势
+  showBubble(this.role, randomFrom(MINE_LINES[this.role]));
+  let strikes = 0;
+  const mineEl = document.getElementById('goldmine');
+  this._mineLoop = setInterval(() => {
+    strikes++;
+    // 矿震动 + 火花
+    mineEl.classList.remove('shake', 'spark');
+    void mineEl.offsetWidth;
+    mineEl.classList.add('shake', 'spark');
+    // 攒 3 镐 = +10 金
+    if (strikes >= 3) {
+      GoldSystem.add(10);
+      clearInterval(this._mineLoop);
+      this._endMine();
+    }
+  }, 700);
+};
+
+NPC.prototype._endMine = function() {
+  this._mining = false;
+  this.setState('idle');
+  this.decisionTimer = 0;
+  this.nextDecision = 3000 + Math.random() * 4000;
+};
+
+// 农民/苦工每隔一段时间随机去挖矿(替代摸鱼)
+function scheduleMining() {
+  setInterval(() => {
+    ['peasant', 'peon'].forEach(role => {
+      const npc = npcs[role];
+      if (npc._mining) return;
+      if (npc.state === 'talk') return; // 正在说话别打断
+      // 25% 概率发起一次挖矿
+      if (Math.random() < 0.25) {
+        npc.goMine();
+      }
+    });
+  }, 8000);
+  // 5 秒后让其中一个先去挖,有个开场
+  setTimeout(() => {
+    const first = Math.random() < 0.5 ? 'peasant' : 'peon';
+    npcs[first].goMine();
+  }, 5000);
+}
+scheduleMining();
+
+// =========================================================
+// v2.7 - 豆包脸偷窥
+// =========================================================
+const DoubaoPeek = {
+  el: document.getElementById('doubao-peek'),
+  positions: ['peek-right', 'peek-left', 'peek-top'],
+  lines: [
+    '在看你呢',
+    '我也想加入',
+    '是谁在写代码?',
+    '让我帮你写吧',
+    '...',
+  ],
+  show() {
+    // 随机方向
+    const pos = randomFrom(this.positions);
+    this.el.className = 'doubao-peek ' + pos;
+    void this.el.offsetWidth;
+    this.el.classList.add('show');
+    // 偶尔配一句 YQ 的反应
+    if (Math.random() < 0.5) {
+      setTimeout(() => {
+        showBubble('yq', randomFrom(['豆包又来了', '别看我', '装作没看见', '...你好']));
+      }, 800);
+    }
+    // 3 秒后缩回去
+    setTimeout(() => {
+      this.el.classList.remove('show');
+    }, 3000);
+  },
+  start() {
+    // 每隔 40~90 秒随机偷窥一次
+    const next = () => {
+      const wait = 40000 + Math.random() * 50000;
+      setTimeout(() => { this.show(); next(); }, wait);
+    };
+    // 首次 30 秒后
+    setTimeout(() => { this.show(); next(); }, 30000);
+  }
+};
+DoubaoPeek.start();
+
+// =========================================================
+// v2.7 - 深夜彩蛋模式 (23:00 ~ 03:00)
+// =========================================================
+const LateNight = {
+  lines: [
+    '你也没睡?',
+    '这点该 commit 了吧',
+    '老板看不到你的努力的',
+    '早点睡 明天还要开会',
+    '熬夜写代码,头发不要了?',
+    '现在的 PR 等明天再 review 会更差',
+    '夜深了,豆包也想睡了',
+    '别卷了,卷不动的',
+  ],
+  active: false,
+  check() {
+    const h = new Date().getHours();
+    const isLate = h >= 23 || h < 3;
+    if (isLate && !this.active) {
+      this.active = true;
+      document.body.classList.add('late-night');
+      setTimeout(() => {
+        showBubble('yq', randomFrom(this.lines));
+      }, 2000);
+      this.loop = setInterval(() => {
+        showBubble('yq', randomFrom(this.lines));
+      }, 25000);
+    } else if (!isLate && this.active) {
+      this.active = false;
+      document.body.classList.remove('late-night');
+      clearInterval(this.loop);
+    }
+  }
+};
+LateNight.check();
+setInterval(() => LateNight.check(), 60000);
+
+console.log('%c⚒ YQ 铁匠铺 v2.7.1','color:#ffd766;font-size:14px;font-weight:bold;text-shadow:1px 1px 0 #000;');
+console.log('%c金币系统已上线 | 豆包偷窥已上线 | 深夜彩蛋已上线','color:#c7a060;');
 </script>
 
 </body>
