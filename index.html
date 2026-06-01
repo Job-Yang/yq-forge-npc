@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>YQ 铁匠铺 · 打工人语音面板 v2.4</title>
+<title>YQ 铁匠铺 · 打工人语音面板 v2.5</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -27,78 +27,45 @@
     transition: background 1.5s ease;
   }
 
-  /* ============ 天气系统 ============ */
-  /* 天气总开关挂在 body 上,通过 data-weather 控制 */
-  body[data-weather="sunny"]::before {
-    background: linear-gradient(180deg, rgba(255,220,140,0.10) 0%, rgba(255,180,80,0.20) 100%);
-  }
-  body[data-weather="cloudy"]::before {
-    background: linear-gradient(180deg, rgba(120,120,130,0.25) 0%, rgba(80,80,90,0.45) 100%);
-  }
-  body[data-weather="rain"]::before {
-    background: linear-gradient(180deg, rgba(40,55,75,0.45) 0%, rgba(20,30,50,0.65) 100%);
-  }
-  body[data-weather="night"]::before {
-    background: linear-gradient(180deg, rgba(15,15,40,0.55) 0%, rgba(5,5,20,0.80) 100%);
-  }
+  /* ============ 天气系统 v2.5 ============
+     设计：canvas 渲染雨滴/闪电/月亮/星星(性能 +可控)
+            CSS 只负责持久调色 tint 层(背景滤镜)
+            保留背景层次,不一片灰
+  ============================================ */
 
-  /* 雨幕 —— CSS 重复线性渐变 */
-  .weather-layer {
+  /* 调色 tint —— mix-blend-mode 保留底图细节 */
+  .tint {
     position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: 2;
     opacity: 0;
-    transition: opacity 1.2s ease;
+    transition: opacity 1s ease;
   }
-  body[data-weather="rain"] .weather-layer.rain { opacity: 1; }
-  .weather-layer.rain {
-    background-image: repeating-linear-gradient(
-      105deg,
-      transparent 0,
-      transparent 6px,
-      rgba(200,220,255,0.35) 6px,
-      rgba(200,220,255,0.35) 7px,
-      transparent 7px,
-      transparent 14px
-    );
-    animation: rain-fall 0.6s linear infinite;
+  body[data-weather="sunny"] .tint.sunny {
+    opacity: 1;
+    background: radial-gradient(ellipse at 75% 10%, rgba(255,230,120,0.35) 0%, rgba(255,180,80,0.10) 25%, transparent 55%);
   }
-  @keyframes rain-fall {
-    0%   { background-position: 0 0; }
-    100% { background-position: -28px 60px; }
+  body[data-weather="rain"] .tint.rain {
+    opacity: 1;
+    background: linear-gradient(180deg, rgba(20,30,50,0.25) 0%, rgba(20,40,70,0.45) 100%);
+    mix-blend-mode: multiply;
+  }
+  body[data-weather="night"] .tint.night {
+    opacity: 1;
+    background: linear-gradient(180deg, rgba(20,20,55,0.55) 0%, rgba(8,8,30,0.80) 100%);
+    mix-blend-mode: multiply;
   }
 
-  /* 夜晚星空 —— 多重 radial-gradient 模拟像素星点 */
-  body[data-weather="night"] .weather-layer.stars { opacity: 1; }
-  .weather-layer.stars {
-    background-image:
-      radial-gradient(2px 2px at 12% 18%, #fff 50%, transparent 51%),
-      radial-gradient(1.5px 1.5px at 28% 7%, #ffe080 50%, transparent 51%),
-      radial-gradient(2px 2px at 47% 22%, #fff 50%, transparent 51%),
-      radial-gradient(1.5px 1.5px at 63% 11%, #fff 50%, transparent 51%),
-      radial-gradient(2px 2px at 82% 25%, #ffd766 50%, transparent 51%),
-      radial-gradient(1.5px 1.5px at 91% 8%, #fff 50%, transparent 51%),
-      radial-gradient(1.5px 1.5px at 5% 32%, #fff 50%, transparent 51%),
-      radial-gradient(2px 2px at 35% 40%, #fff 50%, transparent 51%),
-      radial-gradient(1.5px 1.5px at 72% 35%, #fff 50%, transparent 51%);
-    animation: twinkle 3s ease-in-out infinite;
-  }
-  @keyframes twinkle {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.55; }
-  }
-
-  /* 晴天 —— 顶部柔光 */
-  body[data-weather="sunny"] .weather-layer.sun { opacity: 1; }
-  .weather-layer.sun {
-    background: radial-gradient(circle at 75% 8%, rgba(255,230,120,0.55) 0%, rgba(255,230,120,0.15) 12%, transparent 28%);
-  }
-
-  /* 阴天 —— 上方阴影压暗 */
-  body[data-weather="cloudy"] .weather-layer.cloud { opacity: 1; }
-  .weather-layer.cloud {
-    background: linear-gradient(180deg, rgba(60,60,70,0.35) 0%, transparent 35%);
+  /* canvas 全屏画特效 */
+  .fx-canvas {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
   }
 
   /* 天气指示器(右上角小标签) */
@@ -313,11 +280,13 @@
   <span class="key">👆 点击 NPC</span> 听他说话 · <span class="key">他们会自己瞎逛</span>
 </div>
 
-<!-- 天气覆盖层(4 种共存,通过 body[data-weather] 控制 opacity) -->
-<div class="weather-layer sun"></div>
-<div class="weather-layer cloud"></div>
-<div class="weather-layer rain"></div>
-<div class="weather-layer stars"></div>
+<!-- 天气调色层(只负责持久滤镜,canvas 负责粒子) -->
+<div class="tint sunny"></div>
+<div class="tint rain"></div>
+<div class="tint night"></div>
+
+<!-- 天气特效 canvas(雨/闪电/月亮/星星) -->
+<canvas class="fx-canvas" id="fx-canvas"></canvas>
 
 <!-- 右上角天气指示器,点击手动切换 -->
 <div class="weather-tag" id="weather-tag" title="点击切换天气">☀️ 晴</div>
@@ -346,7 +315,7 @@
 </div>
 
 <div class="footer">
-  YQ 的铁匠铺 · 打工人语音面板 v2.4 · 点击数:<span id="counter">0</span>
+  YQ 的铁匠铺 · 打工人语音面板 v2.5 · 点击数:<span id="counter">0</span>
 </div>
 
 <button class="mute-btn" id="mute-btn" title="切换语音">🔊 有声</button>
@@ -773,22 +742,270 @@ window.addEventListener('resize', () => {
 });
 
 // =========================================================
-// 11. 天气系统 —— 4 种天气轮转,每 45s 切一次,YQ 顺嘴评论
+// 11. 天气系统 v2.5 —— canvas 渲染,戏剧化像素风
+//   - 雨：3 层视差 + 风向摇摆 + 地面溅落 sprite
+//   - 暴雨：随机闪电(全屏闪光 + 锯齿闪电几何 + 蓝色余晖)
+//   - 夜：星空缓动闪烁 + 像素月亮
+//   - 切换：手动点右上角(sunny→rain→night→sunny)
 // =========================================================
-const WEATHER_ORDER = ['sunny', 'cloudy', 'rain', 'night'];
+const fxCanvas = document.getElementById('fx-canvas');
+const fxCtx = fxCanvas.getContext('2d');
+fxCtx.imageSmoothingEnabled = false;
+
+const WEATHER_ORDER = ['sunny', 'rain', 'night'];
 const WEATHER_META = {
-  sunny:  { tag: '☀️ 晴',   yqLines: ['天好,代码也跑得欢', '太阳出来了,我还在改 bug', '阳光这么好,适合等 CI'] },
-  cloudy: { tag: '☁️ 多云', yqLines: ['阴天最适合写代码', '云挺厚,跟我的 PR 一样', '不晒,不冷,刚好 review'] },
-  rain:   { tag: '🌧 雨',   yqLines: ['下雨了,服务器别也下', '雨声陪我加班', '下雨天和 AI 更配哦'] },
-  night:  { tag: '🌙 夜',   yqLines: ['天黑了,AI 也该睡了吧', '夜了,但 Agent 不睡', '深夜的 commit 最危险'] },
+  sunny: { tag: '☀️ 晴',  yqLines: ['天好,代码也跑得欢', '阳光这么好,适合等 CI', '今天的灵感来自一次 retry'] },
+  rain:  { tag: '🌧 暴雨', yqLines: ['下雨打雷,服务器可别也下', '雨声陪我加班', '回滚到 AI 介入之前'] },
+  night: { tag: '🌙 夜',  yqLines: ['夜了,但 Agent 不睡', '深夜的 commit 最危险', '我不是在摸鱼,我在等GPT 5.5'] },
 };
 let weatherIdx = 0;
+let currentWeather = 'sunny';
 const weatherTag = document.getElementById('weather-tag');
 
+// canvas 尺寸适配 DPR
+function fitCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  fxCanvas.width  = window.innerWidth * dpr;
+  fxCanvas.height = window.innerHeight * dpr;
+  fxCanvas.style.width  = window.innerWidth + 'px';
+  fxCanvas.style.height = window.innerHeight + 'px';
+  fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+
+// ---- 粒子池 ----
+const drops = [];      // 雨滴
+const splashes = [];   // 溅落
+const stars = [];      // 星星
+let wind = 0;          // 当前风向(像素/帧)
+let flash = 0;         // 全屏闪光强度 0~1
+let afterglow = 0;     // 闪电后的蓝色余晖
+let bolt = null;       // 当前闪电几何
+let nextStrike = 0;    // 下次打雷的时间戳
+
+function seedRain() {
+  drops.length = 0;
+  const W = window.innerWidth, H = window.innerHeight;
+  // 3 层视差: layer 1 远小, 2 中, 3 近大
+  for (let i = 0; i < 220; i++) {
+    const layer = 1 + (i % 3);
+    drops.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      v: 4 + Math.random() * 4 + layer * 2,
+      layer,
+    });
+  }
+}
+function seedStars() {
+  stars.length = 0;
+  const W = window.innerWidth, H = window.innerHeight * 0.55; // 只在天空区域
+  for (let i = 0; i < 80; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      size: Math.random() < 0.85 ? 1 : 2,
+      phase: Math.random() * Math.PI * 2,
+      color: Math.random() < 0.85 ? '#ffffff' : '#ffe080',
+    });
+  }
+}
+seedRain();
+seedStars();
+
+// 闪电：递归生成锯齿折线
+function makeBolt() {
+  const W = window.innerWidth, H = window.innerHeight;
+  const startX = W * (0.2 + Math.random() * 0.6);
+  const segments = [{ x: startX, y: 0 }];
+  let y = 0;
+  while (y < H * 0.7) {
+    const last = segments[segments.length - 1];
+    y += 15 + Math.random() * 25;
+    segments.push({
+      x: last.x + (Math.random() - 0.5) * 60,
+      y,
+    });
+    // 偶尔来一道分叉
+    if (Math.random() < 0.15) {
+      let bx = last.x, by = last.y;
+      const branch = [{ x: bx, y: by }];
+      for (let i = 0; i < 4; i++) {
+        bx += (Math.random() - 0.5) * 40;
+        by += 12 + Math.random() * 18;
+        branch.push({ x: bx, y: by });
+      }
+      segments.push({ branch });
+    }
+  }
+  return { segments, life: 12 };
+}
+function drawBolt(b) {
+  const a = b.life / 12;
+  // 外层光晕
+  fxCtx.strokeStyle = `rgba(180,200,255,${0.35 * a})`;
+  fxCtx.lineWidth = 8;
+  fxCtx.lineCap = 'round';
+  fxCtx.beginPath();
+  let prev = null;
+  for (const s of b.segments) {
+    if (s.branch) {
+      fxCtx.moveTo(s.branch[0].x, s.branch[0].y);
+      for (const p of s.branch) fxCtx.lineTo(p.x, p.y);
+      continue;
+    }
+    if (!prev) fxCtx.moveTo(s.x, s.y);
+    else fxCtx.lineTo(s.x, s.y);
+    prev = s;
+  }
+  fxCtx.stroke();
+  // 内核白光
+  fxCtx.strokeStyle = `rgba(255,255,255,${a})`;
+  fxCtx.lineWidth = 2;
+  fxCtx.beginPath();
+  prev = null;
+  for (const s of b.segments) {
+    if (s.branch) {
+      fxCtx.moveTo(s.branch[0].x, s.branch[0].y);
+      for (const p of s.branch) fxCtx.lineTo(p.x, p.y);
+      continue;
+    }
+    if (!prev) fxCtx.moveTo(s.x, s.y);
+    else fxCtx.lineTo(s.x, s.y);
+    prev = s;
+  }
+  fxCtx.stroke();
+}
+
+function drawMoon() {
+  const W = window.innerWidth;
+  const cx = W * 0.82, cy = 80;
+  // 月晕
+  const halo = fxCtx.createRadialGradient(cx, cy, 10, cx, cy, 60);
+  halo.addColorStop(0, 'rgba(255,240,200,0.45)');
+  halo.addColorStop(1, 'rgba(255,240,200,0)');
+  fxCtx.fillStyle = halo;
+  fxCtx.fillRect(cx - 60, cy - 60, 120, 120);
+  // 月本体(像素圆)
+  fxCtx.fillStyle = '#fff5d4';
+  for (let dy = -16; dy <= 16; dy += 2) {
+    const w = Math.floor(Math.sqrt(256 - dy * dy));
+    fxCtx.fillRect(cx - w, cy + dy, w * 2, 2);
+  }
+  // 月相阴影
+  fxCtx.fillStyle = 'rgba(40,30,60,0.45)';
+  for (let dy = -12; dy <= 12; dy += 2) {
+    const w = Math.floor(Math.sqrt(144 - dy * dy));
+    fxCtx.fillRect(cx - w - 6, cy + dy, w * 2, 2);
+  }
+}
+
+let lastFrame = performance.now();
+function weatherTick(now) {
+  requestAnimationFrame(weatherTick);
+  const dt = Math.min(40, now - lastFrame);
+  lastFrame = now;
+  fxCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+  if (currentWeather === 'rain') {
+    const W = window.innerWidth, H = window.innerHeight;
+    // 风向缓慢摇摆,偶尔来一阵
+    wind = Math.sin(now / 1800) * 2 + Math.sin(now / 350) * 0.4;
+
+    // 雨滴
+    fxCtx.lineCap = 'round';
+    for (const d of drops) {
+      const speed = d.v * (dt / 16.67);
+      d.y += speed;
+      d.x += wind * d.layer * 0.5;
+      const alpha = 0.20 + d.layer * 0.22;
+      fxCtx.strokeStyle = `rgba(190,210,240,${alpha})`;
+      fxCtx.lineWidth = d.layer;
+      fxCtx.beginPath();
+      fxCtx.moveTo(d.x, d.y);
+      fxCtx.lineTo(d.x - wind * 1.5, d.y - 5 * d.layer);
+      fxCtx.stroke();
+      // 触地 → 溅落 + 复位
+      if (d.y > H * 0.78) {
+        if (d.layer >= 2 && splashes.length < 50 && Math.random() < 0.35) {
+          splashes.push({ x: d.x, y: H * 0.78 + Math.random() * H * 0.18, f: 0 });
+        }
+        d.y = -10;
+        d.x = Math.random() * W;
+      }
+      if (d.x < -20) d.x = W + 10;
+      if (d.x > W + 20) d.x = -10;
+    }
+    // 溅落小水圈
+    for (const s of splashes) {
+      const a = 1 - s.f / 8;
+      fxCtx.strokeStyle = `rgba(200,220,255,${0.55 * a})`;
+      fxCtx.lineWidth = 1;
+      fxCtx.beginPath();
+      fxCtx.arc(s.x, s.y, 1 + s.f * 1.2, 0, Math.PI * 2);
+      fxCtx.stroke();
+      s.f += 0.6;
+    }
+    for (let i = splashes.length - 1; i >= 0; i--) {
+      if (splashes[i].f > 8) splashes.splice(i, 1);
+    }
+
+    // 闪电触发
+    if (now > nextStrike) {
+      bolt = makeBolt();
+      flash = 0.85;
+      afterglow = 1;
+      nextStrike = now + 4000 + Math.random() * 9000;
+    }
+    // 全屏闪光
+    if (flash > 0) {
+      fxCtx.fillStyle = `rgba(255,255,255,${flash})`;
+      fxCtx.fillRect(0, 0, W, H);
+      flash -= 0.10;
+    }
+    // 闪电几何
+    if (bolt) {
+      drawBolt(bolt);
+      bolt.life--;
+      if (bolt.life < 0) bolt = null;
+    }
+    // 余晖(冷蓝)
+    if (afterglow > 0) {
+      fxCtx.fillStyle = `rgba(150,180,230,${0.12 * afterglow})`;
+      fxCtx.fillRect(0, 0, W, H);
+      afterglow -= 0.012;
+    }
+  }
+
+  if (currentWeather === 'night') {
+    drawMoon();
+    for (const st of stars) {
+      st.phase += 0.04;
+      const a = 0.55 + 0.45 * Math.sin(st.phase);
+      fxCtx.fillStyle = st.color.replace(')', `,${a})`).replace('rgb', 'rgba')
+        || `rgba(255,255,255,${a})`;
+      // 兼容 hex
+      fxCtx.fillStyle = st.color;
+      fxCtx.globalAlpha = a;
+      fxCtx.fillRect(st.x, st.y, st.size, st.size);
+    }
+    fxCtx.globalAlpha = 1;
+  }
+}
+requestAnimationFrame(weatherTick);
+
 function setWeather(name, silent = false) {
+  currentWeather = name;
   document.body.setAttribute('data-weather', name);
   const meta = WEATHER_META[name];
   if (weatherTag) weatherTag.textContent = meta.tag;
+  // 切到 rain 时重置雷电计时
+  if (name === 'rain') {
+    nextStrike = performance.now() + 1500 + Math.random() * 3000;
+  } else {
+    bolt = null; flash = 0; afterglow = 0;
+  }
   if (!silent && npcs.yq) {
     const line = randomFrom(meta.yqLines);
     showBubble('yq', line);
@@ -799,13 +1016,7 @@ function setWeather(name, silent = false) {
 // 初始 sunny,首次不冒泡
 setWeather('sunny', true);
 
-// 每 45 秒切换
-setInterval(() => {
-  weatherIdx = (weatherIdx + 1) % WEATHER_ORDER.length;
-  setWeather(WEATHER_ORDER[weatherIdx]);
-}, 45000);
-
-// 点击右上角标签手动切换
+// 不再自动轮转(45s 干扰太频繁)。改为只支持手动点切。
 weatherTag.addEventListener('click', (e) => {
   e.stopPropagation();
   weatherIdx = (weatherIdx + 1) % WEATHER_ORDER.length;

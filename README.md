@@ -1,11 +1,18 @@
-# YQ 铁匠铺 · 打工人语音面板 v2.4
+# YQ 铁匠铺 · 打工人语音面板 v2.5
 
 一个像素风可交互 NPC 语音面板：点击人族农民 / 兽族苦工，他们会冒像素台词框 + 播放对应 War3 语音；工程师 YQ 不说话，只会定时冒泡。三个 NPC 都会在地面上自己瞎逛。
 
-**v2.4 更新**：
-- 加入天气系统（晴/多云/雨/夜），每 45s 自动轮转，点右上角标签也能手动切。换天气时 YQ 会顺嘴评论一句。
-- YQ 台词池整体替换为「工程师 × AI 协作日常吐槽」21 条。
+**v2.5 天气系统重写（戏剧化像素风）**：
+- 用 `<canvas>` 重写整个天气层（之前 CSS 重复渐变效果太差）
+- **暴雨**：3 层视差雨滴 + 风向随时间摇摆 + 地面溅落小水圈 + 随机闪电（全屏闪光 + 锯齿闪电几何 + 蓝色余晖）
+- **夜晚**：80 颗星星缓动闪烁 + 像素月亮（带月相阴影）
+- **晴**：保留 v2.4 的暖色光晕
+- 调色用 `mix-blend-mode: multiply`，保留背景层次而不一片灰
+- 砍掉自动 45s 轮转（干扰太频繁），改为只**手动**点右上角标签切换 sunny → rain → night → sunny
 
+参考：[CodePen Pixel Rain](https://codepen.io/JohnvandeWater/pen/XbgryW) / [Canvas Lightning by Sooraj](https://dev.to/soorajsnblaze333/make-it-flash-lightning-with-canvas-43nh)
+
+**v2.4**：YQ 台词池整体替换为「工程师 × AI 协作日常吐槽」21 条。
 **v2.3**：右下角 🔊/🔇 静音切换，状态写 localStorage 自动记住。
 
 ## 本地预览
