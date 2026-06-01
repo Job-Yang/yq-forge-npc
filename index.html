@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>YQ 铁匠铺 · 打工人语音面板</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: "SF Mono", "Menlo", "PingFang SC", monospace;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+  body {
+    background: url("assets/img/bg.jpeg") center/cover no-repeat;
+    position: relative;
+    user-select: none;
+  }
+  /* 半透明叠层让 NPC 更突出 */
+  body::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(20,15,10,0.15) 0%, rgba(20,15,10,0.35) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* 顶部 hint 条 */
+  .hint {
+    position: absolute;
+    top: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(0,0,0,0.55);
+    color: #ffe9a8;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    border: 1px solid rgba(255,233,168,0.3);
+  }
+  .hint .key { color: #ffd766; font-weight: bold; }
+
+  /* NPC 容器 */
+  .stage {
+    position: absolute; inset: 0;
+    z-index: 5;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding-bottom: 4%;
+  }
+  .npc {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.18s ease-out;
+    filter: drop-shadow(0 6px 4px rgba(0,0,0,0.4));
+  }
+  .npc:hover {
+    transform: translateY(-6px) scale(1.04);
+  }
+  .npc.talking {
+    animation: shake 0.4s ease-in-out;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateY(0) scale(1); }
+    25% { transform: translateY(-4px) rotate(-2deg) scale(1.05); }
+    50% { transform: translateY(-8px) rotate(0) scale(1.06); }
+    75% { transform: translateY(-4px) rotate(2deg) scale(1.05); }
+  }
+  .npc img {
+    height: 55vh;
+    max-height: 480px;
+    display: block;
+  }
+
+  /* 名牌 */
+  .nameplate {
+    position: absolute;
+    bottom: -22px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    padding: 3px 10px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    border-radius: 3px;
+    white-space: nowrap;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* 对话气泡 */
+  .bubble {
+    position: absolute;
+    top: -60px;
+    left: 50%; transform: translateX(-50%) scale(0);
+    background: #fff;
+    color: #111;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: bold;
+    border: 3px solid #2a1a05;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+    transition: transform 0.2s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    pointer-events: none;
+    max-width: 240px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .bubble.show {
+    transform: translateX(-50%) scale(1);
+  }
+  .bubble::after {
+    content: "";
+    position: absolute;
+    bottom: -10px; left: 50%; transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-top-color: #2a1a05;
+  }
+  .bubble::before {
+    content: "";
+    position: absolute;
+    bottom: -7px; left: 50%; transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-top-color: #fff;
+    z-index: 1;
+  }
+
+  /* footer 计数器 */
+  .footer {
+    position: absolute;
+    bottom: 8px; left: 12px;
+    z-index: 10;
+    color: rgba(255,255,255,0.5);
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .footer span { color: #ffd766; }
+
+  /* 全局喊话按钮 */
+  .global-btn {
+    position: absolute;
+    bottom: 8px; right: 12px;
+    z-index: 10;
+    background: rgba(120,40,30,0.85);
+    color: #ffe9a8;
+    border: 1px solid #ffd766;
+    padding: 6px 12px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-family: inherit;
+  }
+  .global-btn:hover {
+    background: rgba(170,60,40,0.95);
+  }
+</style>
+</head>
+<body>
+
+<div class="hint">
+  <span class="key">👆 点击 NPC</span> 听他说话 · <span class="key">悬停</span> 看反应
+</div>
+
+<div class="stage">
+  <!-- 人族农民 -->
+  <div class="npc" id="peasant" data-role="peasant">
+    <div class="bubble" id="bubble-peasant"></div>
+    <img src="assets/img/peasant.jpeg" alt="Peasant" />
+    <div class="nameplate">⚔ 人族农民</div>
+  </div>
+
+  <!-- 兽人苦工 -->
+  <div class="npc" id="peon" data-role="peon">
+    <div class="bubble" id="bubble-peon"></div>
+    <img src="assets/img/peon.jpeg" alt="Peon" />
+    <div class="nameplate">🪓 兽族苦工</div>
+  </div>
+</div>
+
+<div class="footer">
+  YQ 的铁匠铺 · 打工人语音面板 v1 · 总点击数:<span id="counter">0</span>
+</div>
+
+<button class="global-btn" id="global-btn">🔔 集结!</button>
+
+<script>
+// =========================================================
+// 语音池 —— 每个角色按"情绪类型"分组,点击/悬停随机播放
+// =========================================================
+const VOICE_POOL = {
+  peasant: {
+    // 中文 War3 农民语音(文件名翻译):
+    // yes = "好的老爷" / "好的"
+    // what = "啥"/"什么"/"你想干嘛"
+    // pissed = "又要干活"/"忙啊忙"/"忙着呢别烦我" 等
+    // ready = "准备干活"
+    // yesattack = "行了我去送死了"
+    // warcry = "相信自己我能行"
+    yes: ['peasantyes1', 'peasantyes2', 'peasantyes3', 'peasantyes4'],
+    what: ['peasantwhat1', 'peasantwhat2', 'peasantwhat3', 'peasantwhat4'],
+    pissed: ['peasantpissed1', 'peasantpissed2', 'peasantpissed3', 'peasantpissed4', 'peasantpissed5'],
+    ready: ['peasantready1'],
+    yesattack: ['peasantyesattack1', 'peasantyesattack2', 'peasantyesattack3', 'peasantyesattack4'],
+    warcry: ['peasantwarcry1'],
+  },
+  peon: {
+    yes: ['peonyes1', 'peonyes2', 'peonyes3', 'peonyes4'],
+    what: ['peonwhat1', 'peonwhat2', 'peonwhat3', 'peonwhat4'],
+    pissed: ['peonpissed1', 'peonpissed2', 'peonpissed3', 'peonpissed4'],
+    ready: ['peonready1'],
+    yesattack: ['peonyesattack1', 'peonyesattack2', 'peonyesattack3'],
+    warcry: ['peonwarcry1'],
+  }
+};
+
+// 气泡台词 —— 不和音频严格对应,只是配合情绪
+const BUBBLE_LINES = {
+  peasant: {
+    yes: ['好的老爷!', '收到!', '没问题!', '马上!'],
+    what: ['啥?', '你想干嘛?', '叫我?', '咋了?'],
+    pissed: ['又要干活...', '忙着呢,别烦我', '能不能歇会儿', '我累了!'],
+    yesattack: ['行了,我去送死了', '上!', '冲啊!'],
+    warcry: ['相信自己我能行!'],
+  },
+  peon: {
+    yes: ['是,老大', 'ok!', '懂了', '马上去'],
+    what: ['啊?', '咋啦?', '叫俺?'],
+    pissed: ['忙啊忙', '我可不是那种兽人', '别催我啊', '砍累了'],
+    yesattack: ['我去会会他们!', '战斗!'],
+    warcry: ['为了部落!'],
+  }
+};
+
+// 点击次数 → 情绪升级机制
+const CLICK_STATE = { peasant: 0, peon: 0 };
+let totalClicks = 0;
+
+function randomFromArray(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getEmotionByClickCount(count) {
+  // 第 1 次: yes (友好)
+  // 2-3 次: what (疑惑)
+  // 4-6 次: pissed (烦躁)
+  // 7+ 次: pissed (彻底烦了,主要走 pissed)
+  // 偶尔 (10% 概率) 触发 yesattack 或 warcry 当彩蛋
+  if (Math.random() < 0.08) {
+    return Math.random() < 0.5 ? 'yesattack' : 'warcry';
+  }
+  if (count === 1) return 'yes';
+  if (count <= 3) return 'what';
+  return 'pissed';
+}
+
+function playVoice(role, emotion) {
+  const pool = VOICE_POOL[role][emotion];
+  if (!pool || pool.length === 0) return;
+  const file = randomFromArray(pool);
+  const audio = new Audio(`assets/audio/${role}/${file}.wav`);
+  audio.volume = 0.85;
+  audio.play().catch(err => console.warn('音频播放失败:', err));
+  return audio;
+}
+
+function showBubble(role, emotion) {
+  const pool = BUBBLE_LINES[role][emotion];
+  if (!pool || pool.length === 0) return;
+  const line = randomFromArray(pool);
+  const bubble = document.getElementById(`bubble-${role}`);
+  bubble.textContent = line;
+  bubble.classList.add('show');
+  // 自动收起
+  clearTimeout(bubble._timer);
+  bubble._timer = setTimeout(() => bubble.classList.remove('show'), 1800);
+}
+
+function triggerNPC(role) {
+  CLICK_STATE[role] += 1;
+  totalClicks += 1;
+  document.getElementById('counter').textContent = totalClicks;
+
+  const emotion = getEmotionByClickCount(CLICK_STATE[role]);
+  showBubble(role, emotion);
+  playVoice(role, emotion);
+
+  // 视觉抖动反馈
+  const npc = document.getElementById(role);
+  npc.classList.remove('talking');
+  void npc.offsetWidth; // 强制重排,重置动画
+  npc.classList.add('talking');
+}
+
+// 绑定点击
+document.querySelectorAll('.npc').forEach(el => {
+  el.addEventListener('click', () => triggerNPC(el.dataset.role));
+});
+
+// 全局集结按钮 —— 两个 NPC 同时喊话
+document.getElementById('global-btn').addEventListener('click', () => {
+  triggerNPC('peasant');
+  setTimeout(() => triggerNPC('peon'), 300);
+});
+
+// 入场播报 —— 页面加载 1 秒后,人族农民先来一句"准备干活"
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    showBubble('peasant', 'ready');
+    playVoice('peasant', 'ready');
+  }, 1000);
+});
+
+// 每隔 45 秒,随机一个 NPC 自己冒话(环境氛围)
+setInterval(() => {
+  const role = Math.random() < 0.5 ? 'peasant' : 'peon';
+  const emotion = Math.random() < 0.6 ? 'pissed' : 'what';
+  showBubble(role, emotion);
+  playVoice(role, emotion);
+}, 45000);
+</script>
+
+</body>
+</html>
